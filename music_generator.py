@@ -89,7 +89,8 @@ def generate_music_loop(config: dict) -> Tuple[List, str]:
         print(f"✅ Successfully generated {len(output)} audio files")
         
         # Generate a timestamp-based ID since we don't have prediction ID
-        timestamp_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Include microseconds for uniqueness
+        timestamp_id = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:17]  # YYYYMMDD_HHMMSS_mmm
         
         return output, timestamp_id
         
@@ -132,9 +133,10 @@ def download_audio_files(file_outputs: List, prediction_id: str, prompt: str = "
     
     # Create folder name using prediction ID or timestamp as fallback
     if prediction_id:
-        folder_name = f"generation_{prediction_id[:8]}"
+        # Use first 16 chars to accommodate longer timestamp format
+        folder_name = f"generation_{prediction_id[:16]}"
     else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:17]
         folder_name = f"generation_{timestamp}"
     
     # Create the folder
@@ -306,6 +308,9 @@ def main():
             print("❌ Failed to fetch existing prediction")
             sys.exit(1)
         print(f"🔄 Using existing prediction: {prediction_id}")
+        # Show timestamp format for reference
+        example_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:17]
+        print(f"   (New generations use format: generation_{example_timestamp})")
     else:
         # Generate new music
         file_outputs, prediction_id = generate_music_loop(config)
@@ -317,7 +322,8 @@ def main():
         print(f"⏱️  Generation took {generation_time:.1f} seconds")
     
     # Download files
-    success, folder_path = download_audio_files(file_outputs, prediction_id, config['prompt'] if config else "N/A", config)
+    prompt_for_folder = config['prompt'] if config else "reused_prediction"
+    success, folder_path = download_audio_files(file_outputs, prediction_id, prompt_for_folder, config)
     
     if success:
         print(f"\n📊 File Summary:")
@@ -336,20 +342,30 @@ def main():
         print(f"   Folder: {folder_path}/")
         
         if len(files_found) >= 4:
-            print(f"   ✅ Enough files for concatenator (needs 4, found {len(files_found)})")
-            print(f"   Run concatenator with: python audio_concatenator.py {folder_path}")
-            print(f"   Expected pattern: AABBAACCDDAA (uses first 4 files)")
+            print(f"   ✅ {len(files_found)} files ready for concatenation")
+            print(f"   Basic usage: python audio_concatenator.py {folder_path}")
+            print(f"   Custom pattern: python audio_concatenator.py {folder_path} --pattern 'YOUR_PATTERN'")
+            
+            # Show pattern examples based on number of files
+            if len(files_found) >= 8:
+                print(f"   Example patterns: ABCDEFGH, AABBCCDDEEFFGGHH, ABCDEFAGFSADGAS")
+            elif len(files_found) >= 6:
+                print(f"   Example patterns: ABCDEF, AABBCCDDEEFF, ABACADCFCEC")
+            else:
+                print(f"   Example patterns: AABBAACCDDAA, ABCDABCD, ABACADABACAD")
             
             # Estimate total duration based on max_duration if available
             if config:
-                estimated_duration = config['max_duration'] * 12  # AABBAACCDDAA pattern = 12 segments
-                print(f"\n💡 With {config['max_duration']}s loops:")
-                print(f"   Total concatenated duration: ~{estimated_duration} seconds ({estimated_duration/60:.1f} minutes)")
+                print(f"\n💡 With {config['max_duration']}s loops and default pattern (12 segments):")
+                estimated_duration = config['max_duration'] * 12
+                print(f"   Total duration: ~{estimated_duration} seconds ({estimated_duration/60:.1f} minutes)")
+                print(f"   Custom patterns: duration = {config['max_duration']}s × pattern_length")
             else:
-                print(f"\n💡 If each loop is ~8 seconds:")
-                print(f"   Total concatenated duration: ~96 seconds (1.6 minutes)")
+                print(f"\n💡 With ~8s loops and default pattern (12 segments):")
+                print(f"   Total duration: ~96 seconds (1.6 minutes)")
+                print(f"   Custom patterns: duration = 8s × pattern_length")
         else:
-            print(f"   ⚠️  Not enough files for concatenator (needs 4, found {len(files_found)})")
+            print(f"   ⚠️  Only {len(files_found)} files found (concatenator works best with 4+)")
         
     else:
         print("❌ Some files failed to download")

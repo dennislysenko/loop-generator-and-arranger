@@ -105,36 +105,87 @@ python music_generator.py --prediction-id 0tm5rsx815rj40cqqppsfr1j10
 
 ## Generated File Structure
 
-Each generation creates a folder:
+Each generation creates a timestamped folder:
 ```
-generation_abc12345/
+generation_20241201_143022_123/
 ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-0.wav
 ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-1.wav  
 ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-2.wav
 ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-3.wav
-└── metadata.txt
+├── ...
+├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-19.wav (if variations=20)
+└── metadata.txt (contains all generation parameters)
 ```
+
+**Folder naming**: `generation_YYYYMMDD_HHMMSS_mmm` (includes milliseconds for uniqueness)
 
 ## Audio Concatenation
 
-After generating, concatenate the files:
+The audio concatenator supports flexible custom patterns and can work with up to 20 audio files (A-T).
+
+### Basic Usage
 
 ```bash
 python audio_concatenator.py generation_abc12345
 ```
 
-This creates a file using the **AABBAACCDDAA** pattern:
-- **A** = File 0, **B** = File 1, **C** = File 2, **D** = File 3
-- Pattern repeats each file multiple times for musical development
+### Custom Pattern Usage
+
+```bash
+# Use custom pattern
+python audio_concatenator.py generation_abc12345 --pattern "ABCDEFGHIJKLMNOPQRST"
+
+# Short punchy pattern
+python audio_concatenator.py generation_abc12345 --pattern "ABAB"
+
+# Complex musical development
+python audio_concatenator.py generation_abc12345 --pattern "AABBCCDDAACCBBDDAABBCCDD"
+
+# Call and response style
+python audio_concatenator.py generation_abc12345 --pattern "ABACADABACAD"
+```
+
+### Pattern System
+
+- **Letters** represent audio files: A=File 0, B=File 1, C=File 2, D=File 3, etc.
+- **Default pattern**: `AABBAACCDDAA` (12 segments)
+- **Supports up to 20 files**: A through T (if you generate that many variations)
+- **Any length**: Create patterns from 2 to 100+ segments
+
+### Common Pattern Examples
+
+| Pattern | Description | Use Case |
+|---------|-------------|----------|
+| `AABBAACCDDAA` | Default (12 segments) | Balanced musical development |
+| `ABCDABCDABCD` | Simple rotation | Even exposure to all variations |
+| `AABBCCDDAABBCCDD` | Extended phrases | Longer musical phrases |
+| `ABACADABACAD` | Call & response | Interactive musical dialog |
+| `ABCDEFABCDEF` | 6-file rotation | Using first 6 variations |
+| `AAAABBBBCCCCDDDD` | Grouped sections | Distinct musical sections |
+| `ABCDEFGHIJKLMNOPQRST` | All 20 variations | Maximum variety showcase |
+| `ABCDEFAGFSADGAS` | Complex asymmetric | Unpredictable musical flow |
+
+### Advanced Pattern Techniques
+
+**Build-up patterns**: `AAAABBBBAAAABBBBCCCCDDDD` - Gradually introduce new elements  
+**Breakdown patterns**: `ABCDEFGHIJKLMNOPQRST...DCBA` - Complex then simple  
+**Rhythmic patterns**: `ABABCDCDEFEFGHGH` - Create rhythmic emphasis  
+**Story patterns**: `ABCDEFGFEDCBA` - Musical narrative with return journey  
+**Chaos patterns**: `AFBGCHDIEJE...` - Intentionally unpredictable for experimental music
 
 ### Duration Calculation
 
-Total concatenated duration = `max_duration × 12`
-- 8-second loops → 96 seconds (1.6 minutes)
-- 12-second loops → 144 seconds (2.4 minutes)
-- 20-second loops → 240 seconds (4 minutes)
+Total duration = `max_duration × pattern_length`
 
-## Complete Workflow Example
+Examples with 8-second loops:
+- `AABBAACCDDAA` (12 chars) → 96 seconds (1.6 minutes)
+- `ABCDABCDABCD` (12 chars) → 96 seconds (1.6 minutes)  
+- `ABCDEFABCDEF` (12 chars) → 96 seconds (1.6 minutes)
+- `AABBCCDDAABBCCDDAABBCCDD` (24 chars) → 192 seconds (3.2 minutes)
+
+## Complete Workflow Examples
+
+### Example 1: Creative Jazz with Custom Pattern
 
 ```bash
 # 1. Generate creative jazz loops
@@ -145,10 +196,28 @@ python music_generator.py \
   --temperature 1.3 \
   --model-version large
 
-# 2. Concatenate (assuming it created generation_xyz789)
-python audio_concatenator.py generation_xyz789
+# 2. Concatenate with call-and-response pattern (assuming it created generation_20241201_143022_123)
+python audio_concatenator.py generation_20241201_143022_123 --pattern "ABACADABACAD"
 
-# Output: concatenated_generation_xyz789_AABBAACCDDAA.wav
+# Output: concatenated_generation_20241201_143022_123_ABACADABACAD.wav
+```
+
+### Example 2: Electronic Music with Extended Development
+
+```bash
+# 1. Generate high-variation electronic loops
+python music_generator.py \
+  --prompt "dark techno with industrial sounds" \
+  --bpm 128 \
+  --variations 8 \
+  --max-duration 6 \
+  --temperature 1.8
+
+# 2. Use complex pattern with 8 variations
+python audio_concatenator.py generation_20241201_143515_456 \
+  --pattern "AABBCCDDEEFFGGHHIIJJAABBCCDDEEFFGGHH"
+
+# Output: concatenated_generation_20241201_143515_456_AABBCCDDEEFFGGHHIIJJAABBCCDDEEFFGGHH.wav
 ```
 
 ## Tips for Best Results
@@ -171,17 +240,22 @@ python audio_concatenator.py generation_xyz789
 
 ## File Organization
 
-After generation, your directory will look like this:
+After generation and concatenation, your directory will look like this:
 ```
 project/
-├── generation_abc12345/
+├── generation_20241201_143022_123/
 │   ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-0.wav
 │   ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-1.wav
 │   ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-2.wav
 │   ├── replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m-3.wav
+│   ├── ... (up to 20 files depending on variations)
 │   └── metadata.txt
-├── concatenated_generation_abc12345_AABBAACCDDAA.wav
+├── concatenated_generation_20241201_143022_123_AABBAACCDDAA.wav
+├── concatenated_generation_20241201_143022_123_ABACADABACAD.wav
+├── concatenated_generation_20241201_143515_456_AABBCCDDEEFFGGHH.wav
 ├── music_generator.py
 ├── audio_concatenator.py
 └── .env
-``` 
+```
+
+**Note**: Multiple concatenated files can be created from the same generation folder using different patterns. 

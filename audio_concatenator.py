@@ -10,37 +10,45 @@ import sys
 import argparse
 
 def get_audio_files(folder_path=None):
-    """Get the 4 audio files from the specified folder or current directory"""
+    """Get all available audio files from the specified folder or current directory"""
     base_name = "replicate-prediction-ey6ew4zgddrj40cqqkcr4xnt0m"
     files = []
     
-    for i in range(4):
+    # Check for files 0-19 (supporting up to 20 variations)
+    for i in range(20):
         if folder_path:
             filename = os.path.join(folder_path, f"{base_name}-{i}.wav")
         else:
             filename = f"{base_name}-{i}.wav"
         
-        if not os.path.exists(filename):
-            print(f"Error: {filename} not found!")
-            sys.exit(1)
-        files.append(filename)
+        if os.path.exists(filename):
+            files.append(filename)
+        else:
+            break  # Stop at first missing file (assumes sequential naming)
+    
+    if len(files) < 2:
+        print(f"Error: Need at least 2 files for concatenation, found {len(files)}")
+        sys.exit(1)
+        
     return files
 
-def validate_pattern(pattern):
-    """Validate that the pattern only contains A, B, C, D"""
-    valid_chars = set('ABCD')
+def validate_pattern(pattern, num_files):
+    """Validate that the pattern only contains valid letters for available files"""
+    # Generate valid characters based on number of files (A, B, C, D, E, F, ...)
+    valid_chars = set(chr(65 + i) for i in range(num_files))  # A=65, B=66, etc.
     pattern_chars = set(pattern.upper())
     
     if not pattern_chars.issubset(valid_chars):
         invalid_chars = pattern_chars - valid_chars
-        raise ValueError(f"Invalid characters in pattern: {invalid_chars}. Only A, B, C, D are allowed.")
+        available = ', '.join(sorted(valid_chars))
+        raise ValueError(f"Invalid characters in pattern: {invalid_chars}. Available letters: {available}")
     
     return pattern.upper()
 
 def create_concat_file(audio_files, pattern="AABBAACCDDAA"):
     """Create a text file for ffmpeg concat demuxer"""
-    # Map pattern letters to file indices
-    pattern_map = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
+    # Map pattern letters to file indices based on available files
+    pattern_map = {chr(65 + i): i for i in range(len(audio_files))}  # A=0, B=1, C=2, etc.
     
     concat_list = []
     for char in pattern:
@@ -111,13 +119,7 @@ def main():
     print("Audio Concatenator - Custom Pattern Support")
     print("=" * 45)
     
-    # Validate and normalize pattern
-    try:
-        pattern = validate_pattern(args.pattern)
-    except ValueError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
-    
+    # Get audio files first to know how many we have
     # Check for folder path
     folder_path = args.folder
     if folder_path and not os.path.exists(folder_path):
@@ -134,6 +136,13 @@ def main():
     print(f"\nFound audio files:")
     for i, file in enumerate(audio_files):
         print(f"  {chr(65+i)} ({i}): {os.path.basename(file)}")
+    
+    # Validate and normalize pattern based on available files
+    try:
+        pattern = validate_pattern(args.pattern, len(audio_files))
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
     
     # Create concat file
     print(f"\nUsing pattern: {pattern}")
